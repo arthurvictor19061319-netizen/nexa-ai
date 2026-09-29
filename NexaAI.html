@@ -1,0 +1,773 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nexa AI</title>
+<meta name="description" content="Nexa AI — seu assistente de inteligência artificial.">
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
+<style>
+:root{
+  --bg:#0b0c10;--sidebar:#17181c;--panel:#202126;--panel2:#27282e;--text:#f3f4f6;
+  --muted:#9ca0aa;--line:#303139;--accent:#6d7cff;--accent2:#8f6dff;
+  --danger:#ff5f6d;--shadow:0 12px 40px rgba(0,0,0,.35);
+}
+*{box-sizing:border-box}
+html,body{margin:0;width:100%;height:100%;font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:var(--bg);color:var(--text);overflow:hidden}
+button,input,textarea,select{font:inherit}
+button{border:0;color:inherit;cursor:pointer}
+.app{height:100vh;display:flex}
+.sidebar{width:280px;background:var(--sidebar);border-right:1px solid #22242a;display:flex;flex-direction:column;padding:14px 10px 12px;flex-shrink:0}
+.brand{height:48px;display:flex;align-items:center;gap:10px;padding:0 10px;font-size:19px;font-weight:750}
+.logo{width:30px;height:30px;border-radius:10px;background:linear-gradient(135deg,#63e6ff,#7d6cff 55%,#c85cff);display:grid;place-items:center;box-shadow:0 0 24px #5b63ff55;font-weight:900}
+.logo span{font-size:15px;color:#fff}
+.nav{display:flex;flex-direction:column;gap:3px;margin-top:6px}
+.nav button,.side-action{height:42px;border-radius:12px;background:transparent;text-align:left;padding:0 12px;color:#e7e8eb;display:flex;align-items:center;gap:12px}
+.nav button:hover,.side-action:hover{background:#25262b}
+.nav button.active{background:#292a2f}
+.ico{width:20px;text-align:center;color:#dfe2ea;font-size:17px}
+.section-title{font-size:12px;color:#8d919c;padding:18px 7px 7px}
+.recents{overflow:auto;flex:1;padding-right:2px}
+.recent{display:block;width:100%;text-align:left;background:transparent;color:#d9dbe1;border-radius:10px;padding:9px 8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:13px}
+.recent:hover{background:#24252a}
+.profile{border-top:1px solid #27282d;padding-top:10px;margin-top:8px;display:flex;align-items:center;gap:9px}
+.avatar{width:34px;height:34px;border-radius:50%;background:linear-gradient(135deg,#b83280,#6d5cff);display:grid;place-items:center;font-weight:700;overflow:hidden}
+.avatar img{width:100%;height:100%;object-fit:cover}
+.profile-info{min-width:0;flex:1}
+.profile-name{font-size:13px;font-weight:650;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.profile-email{font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.gear{background:transparent;font-size:18px;padding:7px;border-radius:9px}.gear:hover{background:#292a2f}
+
+.main{flex:1;min-width:0;display:flex;flex-direction:column;position:relative;background:
+ radial-gradient(circle at 52% 42%,#172451 0,#11172b 19%,#0d1018 43%,#0b0c10 70%)}
+.topbar{height:62px;display:flex;align-items:center;justify-content:flex-end;padding:0 18px;gap:10px}
+.topbar button{background:#1c1d22;border:1px solid #2b2c32;padding:9px 14px;border-radius:18px}
+.topbar .upgrade{background:#4058bd;border-color:#4d64cc}
+.content{flex:1;overflow:auto;padding:24px 24px 150px}
+.home{min-height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;transform:translateY(-5vh)}
+.home h1{font-size:38px;font-weight:450;margin:0 0 34px;letter-spacing:-1.4px}
+.composer{width:min(720px,92%);background:#202127;border:1px solid #2a2b31;border-radius:28px;box-shadow:var(--shadow);padding:7px 10px 7px 17px;display:flex;align-items:flex-end;gap:9px}
+.composer textarea{flex:1;resize:none;border:0;outline:0;background:transparent;color:#fff;min-height:44px;max-height:170px;padding:12px 0;font-size:15px}
+.circle-btn{width:40px;height:40px;border-radius:50%;background:#2b2c31;display:grid;place-items:center;font-size:17px;flex-shrink:0}
+.send{background:#f2f3f5;color:#101116}.send:disabled{opacity:.35;cursor:default}
+.model-wrap{position:relative}.model-select{height:40px;border:0;background:transparent;color:#e7e8ec;outline:0;padding:0 4px;cursor:pointer}
+.model-select option{background:#202127;color:#fff}
+.hint{font-size:12px;color:#858995;margin-top:15px}
+.chat{max-width:900px;margin:0 auto}
+.message{display:flex;gap:12px;margin:18px 0}
+.message.user{justify-content:flex-end}
+.message.user .bubble{background:#292b33;border:1px solid #353741}
+.bubble{max-width:78%;padding:13px 15px;border-radius:17px;line-height:1.55;font-size:14px;white-space:pre-wrap;word-break:break-word}
+.message.ai .bubble{background:transparent;padding-left:0}
+.msg-avatar{width:31px;height:31px;border-radius:10px;flex-shrink:0;background:transparent;border:0;display:grid;place-items:center;font-weight:900;font-size:19px;color:#fff}
+.typing{display:inline-flex;gap:4px;padding:12px 4px}.typing i{width:6px;height:6px;background:#aeb2bd;border-radius:50%;animation:b 1s infinite}.typing i:nth-child(2){animation-delay:.15s}.typing i:nth-child(3){animation-delay:.3s}@keyframes b{50%{opacity:.25;transform:translateY(-3px)}}
+.bottom-composer{position:absolute;left:0;right:0;bottom:0;padding:15px 22px 22px;background:linear-gradient(transparent,#0b0c10 30%)}
+.bottom-composer .composer{margin:auto;width:min(900px,95%)}
+
+.empty{padding:80px 20px;text-align:center;color:var(--muted)}
+.view-title{font-size:28px;margin:15px auto 8px;max-width:900px}.view-sub{color:var(--muted);max-width:900px;margin:0 auto 25px}
+.card-grid{max-width:900px;margin:auto;display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
+.card{background:#17191f;border:1px solid #292b32;border-radius:16px;padding:18px}.card h3{margin:0 0 7px}.card p{color:var(--muted);font-size:13px;line-height:1.5}
+
+.overlay{position:fixed;inset:0;background:#0009;display:none;align-items:center;justify-content:center;padding:20px;z-index:10}
+.modal{width:min(520px,100%);background:#18191e;border:1px solid #30323a;border-radius:20px;box-shadow:var(--shadow);padding:22px}
+.modal h2{margin:0 0 18px}.field{margin:14px 0}.field label{display:block;color:#aeb1bb;font-size:12px;margin-bottom:7px}
+.field input,.field select{width:100%;background:#101116;border:1px solid #33353e;color:#fff;padding:12px;border-radius:11px;outline:0}
+.modal-actions{display:flex;justify-content:flex-end;gap:9px;margin-top:20px}.modal-actions button{padding:10px 15px;border-radius:11px;background:#2a2c33}.modal-actions .primary{background:#5267d9}
+.login-note{font-size:12px;color:#8e929d;line-height:1.5;margin-top:12px}
+.google-area{display:flex;justify-content:center;margin:10px 0 8px;min-height:44px}
+.login-screen{position:fixed;inset:0;background:#0b0c10;z-index:20;display:none;align-items:center;justify-content:center;padding:20px}
+.login-box{width:min(440px,100%);background:#17181d;border:1px solid #2c2e35;border-radius:24px;padding:34px;text-align:center;box-shadow:var(--shadow)}
+.login-box .logo{margin:0 auto 15px;width:54px;height:54px}.login-box h1{margin:0 0 8px}.login-box p{color:var(--muted);font-size:13px;line-height:1.5;margin:0 auto 22px;max-width:340px}
+.hidden{display:none!important}
+.attachments{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 10px}.attachment-chip{display:flex;align-items:center;gap:7px;background:#202229;border:1px solid #343741;border-radius:12px;padding:7px 10px;font-size:12px;color:#ddd}.attachment-chip button{background:transparent;border:0;color:#aaa;padding:0;cursor:pointer}.message-attachments{display:flex;flex-direction:column;gap:8px;margin:0 0 10px}.file-preview{max-width:min(360px,72vw);max-height:300px;border-radius:14px;display:block;margin:0;border:1px solid #343741;object-fit:contain;background:#111318}.message.user .message-attachments .attachment-chip{width:max-content;max-width:100%}.user-text{margin-top:2px}.creator-badge{display:inline-flex;align-items:center;gap:5px;padding:4px 8px;border-radius:999px;background:#2a2450;color:#cfc5ff;font-size:11px;font-weight:700}.plus-badge{display:inline-flex;align-items:center;gap:5px;padding:4px 8px;border-radius:999px;background:#2d2740;color:#e5d8ff;font-size:11px;font-weight:700}.modal textarea{width:100%;background:#101116;border:1px solid #33353e;color:#fff;padding:12px;border-radius:11px;outline:0;resize:vertical}
+.plus-modal{width:min(820px,100%);background:#11131a;border:1px solid #373a49;border-radius:28px;box-shadow:0 30px 90px rgba(0,0,0,.55);padding:26px;position:relative;overflow:hidden}
+.plus-modal:before{content:"";position:absolute;inset:-120px -80px auto auto;width:310px;height:310px;border-radius:50%;background:radial-gradient(circle,#7866ff45 0,#7866ff10 46%,transparent 70%);pointer-events:none}
+.plus-hero{display:flex;align-items:center;gap:14px;position:relative;z-index:1}
+.plus-icon{width:52px;height:52px;border-radius:16px;display:grid;place-items:center;font-size:26px;font-weight:900;background:linear-gradient(135deg,#7f6dff,#bf5dff);box-shadow:0 0 35px #7e6aff44}
+.plus-kicker{font-size:10px;letter-spacing:1.8px;color:#9ea6ff;font-weight:800;margin-bottom:3px}
+.plus-hero h2{font-size:30px;letter-spacing:-1px;margin:0}
+.plus-hero p{margin:3px 0 0;color:#a4a8b5;font-size:13px}
+.plus-close{margin-left:auto;width:36px;height:36px;border-radius:12px;background:#1d2028;border:1px solid #30333e;font-size:25px;line-height:1}.plus-close:hover{background:#282b35}
+.plus-status-row{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:22px 0 14px;padding:12px 14px;border-radius:14px;background:#181b23;border:1px solid #2b2f3b;font-size:12px;color:#9da2af}
+.plus-plans{display:grid;grid-template-columns:1fr 1.16fr;gap:14px}
+.plus-plan{border-radius:20px;padding:18px;position:relative;overflow:hidden}.free-plan{background:#171a20;border:1px solid #2d3039}.premium-plan{background:linear-gradient(145deg,#1d1b2a,#1b1824 50%,#211b2f);border:1px solid #5c4fd0;box-shadow:0 0 0 1px #7a6bff22,0 20px 45px #0005}
+.popular-tag{position:absolute;top:12px;right:12px;font-size:9px;letter-spacing:.8px;font-weight:800;color:#e5e0ff;background:#4c3fb7;padding:6px 8px;border-radius:999px}
+.plan-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px}.plan-name{font-size:18px;font-weight:750}.plan-desc{font-size:12px;color:#9297a5;margin-top:3px}.plan-price{font-size:20px;font-weight:800;white-space:nowrap}.plan-price small{font-size:11px;font-weight:600;color:#979bab}.plan-divider{height:1px;background:#2d3039;margin:15px 0}.feature{display:flex;gap:9px;align-items:center;color:#e2e4ea;font-size:12px;margin:11px 0}.feature span{display:grid;place-items:center;width:18px;height:18px;border-radius:50%;background:#322b62;color:#bfb7ff;font-weight:800}.muted-feature{color:#b2b6c0}.muted-feature span{background:#252831;color:#8f95a3}
+.plus-main-btn{width:100%;margin-top:15px;padding:12px 14px;border-radius:12px;background:linear-gradient(90deg,#6871ff,#9865ff);font-weight:750;box-shadow:0 8px 24px #6c63ff22}.plus-main-btn:hover{filter:brightness(1.08)}
+.coupon-box{margin-top:14px;padding:15px;border:1px solid #2e3240;background:#171a21;border-radius:18px}.coupon-title{font-size:12px;font-weight:700;margin-bottom:8px}.coupon-line{display:flex;gap:8px}.coupon-line input{flex:1;background:#0e1015;border:1px solid #333743;color:#fff;padding:11px 12px;border-radius:11px;outline:0}.coupon-line button{padding:11px 15px;border-radius:11px}.coupon-help{font-size:11px;color:#838895;margin-top:8px}.plus-footnote{text-align:center;font-size:10px;color:#656a77;margin-top:13px}
+@media(max-width:720px){.plus-modal{padding:18px;border-radius:22px}.plus-plans{grid-template-columns:1fr}.plus-hero h2{font-size:25px}}
+.toast{position:fixed;right:20px;bottom:20px;background:#24262d;border:1px solid #383a44;padding:11px 15px;border-radius:12px;box-shadow:var(--shadow);display:none;z-index:30;font-size:13px}
+@media(max-width:760px){.sidebar{width:70px;padding:10px 7px}.brand strong,.nav button span:not(.ico),.section-title,.recent,.profile-info,.gear{display:none}.brand{justify-content:center;padding:0}.nav button{justify-content:center;padding:0}.profile{justify-content:center}.topbar{height:50px}.home h1{font-size:29px}.content{padding-left:12px;padding-right:12px}.bubble{max-width:88%}}
+.stream-cursor{display:inline-block;width:7px;height:1.05em;vertical-align:-2px;margin-left:2px;background:currentColor;opacity:.7;animation:blink .8s steps(1) infinite}@keyframes blink{50%{opacity:0}}
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar">
+    <div class="brand"><div class="logo"><span>N</span></div><strong>Nexa AI</strong></div>
+    <div class="nav">
+      <button class="active" data-view="home"><span class="ico">✎</span><span>Nova conversa</span></button>
+      <button data-view="search"><span class="ico">⌕</span><span>Pesquisar conversas</span></button>
+      <button data-view="people"><span class="ico">◎</span><span>Procurar por ID</span></button>
+      <button data-view="images"><span class="ico">▧</span><span>Imagens</span></button>
+      <button data-view="library"><span class="ico">⊞</span><span>Biblioteca</span></button>
+    </div>
+    <div class="section-title">Notebooks</div>
+    <button class="side-action" id="newNotebook"><span class="ico">＋</span><span>Novo notebook</span></button>
+    <div class="section-title">Recentes</div>
+    <div class="recents" id="recents"></div>
+    <div class="profile">
+      <div class="avatar" id="avatar">N</div>
+      <div class="profile-info"><div class="profile-name" id="profileName">Visitante</div><div class="profile-email" id="profileEmail">Entre com o Google</div></div>
+      <button class="gear" id="settingsBtn">⚙</button>
+    </div>
+  </aside>
+
+  <main class="main">
+    <div class="topbar">
+      <button id="loginTop">Entrar / Criar conta</button>
+      <button class="upgrade" id="upgradeBtn">✦ Nexa Plus</button><button id="creatorBtn" style="display:none">Criador</button>
+    </div>
+    <section class="content" id="content"></section>
+    <div class="bottom-composer hidden" id="bottomComposer">
+      <div id="bottomAttachments" class="attachments"></div>
+      <div class="composer">
+        <button class="circle-btn" id="attachBtn" title="Anexar arquivo">＋</button><button class="circle-btn" id="micBtn" title="Gravar áudio">🎙</button>
+        <textarea id="chatInput" rows="1" placeholder="Pergunte à Nexa AI"></textarea>
+        <div class="model-wrap"><select class="model-select" id="modelSelect">
+          <option value="gemini-3.5-flash-lite">Turbo • Flash-Lite</option>
+          <option value="gemini-3.8-flash">Avançado • Flash</option>
+        </select></div>
+        <button class="circle-btn send" id="sendBtn" title="Enviar">➤</button>
+      </div>
+    </div>
+  </main>
+</div>
+
+<div class="overlay" id="settingsOverlay">
+  <div class="modal">
+    <h2>Configurações da Nexa AI</h2>
+    <div class="field"><label>Servidor da Nexa</label><input id="serverApiUrl" type="url" placeholder="/api/chat"><small style="display:block;margin-top:6px;color:#858993">No site hospedado, seus amigos não precisam colocar API Key. A chave fica protegida no servidor.</small></div>
+    <div class="field"><label>Chave local (opcional)</label><input id="apiKey" type="password" placeholder="Use só para testes locais"></div>
+    <div class="field"><label>Modelo padrão</label><select id="defaultModel"><option value="gemini-3.5-flash-lite">Gemini 3.5 Flash-Lite — mais rápido</option><option value="gemini-3.8-flash">Gemini 3.8 Flash — avançado</option></select></div>
+    <div class="login-note">Modo hospedado: o navegador chama o servidor da Nexa, e só o servidor conhece a GEMINI_API_KEY. Assim, quem receber o link não precisa criar/configurar uma API Key.</div>
+    <div class="modal-actions"><button id="closeSettings">Cancelar</button><button class="primary" id="saveSettings">Salvar</button></div>
+  </div>
+</div>
+
+<div class="login-screen" id="loginScreen">
+  <div class="login-box">
+    <div class="logo"><span>N</span></div>
+    <h1 id="authTitle">Entrar na Nexa AI</h1>
+    <p id="authSubtitle">Entre com Google ou use seu Gmail e senha para acessar sua conta.</p>
+    <div class="field" style="text-align:left"><label>E-mail</label><input id="authEmail" type="email" autocomplete="username" placeholder="seuemail@gmail.com"></div>
+    <div class="field" style="text-align:left"><label>Senha</label><input id="authPassword" type="password" autocomplete="current-password" placeholder="••••••••"></div>
+    <div class="field" id="authNameField" style="text-align:left;display:none"><label>Nome</label><input id="authName" type="text" autocomplete="name" placeholder="Seu nome"></div>
+    <button id="googleLoginBtn" style="width:100%;padding:12px;margin-top:4px;border-radius:11px;background:#fff;color:#111;font-weight:650">Continuar com Google</button>
+    <div style="display:flex;align-items:center;gap:10px;margin:14px 0;color:#737782;font-size:12px"><span style="height:1px;background:#30323a;flex:1"></span>ou<span style="height:1px;background:#30323a;flex:1"></span></div>
+    <button class="primary" id="authSubmit" style="width:100%;padding:12px;margin-top:4px">Entrar</button>
+    <button id="authSwitch" style="margin-top:12px;background:transparent;color:#9ab8ff">Criar uma conta</button>
+    <button id="forgotPassword" style="margin-top:8px;background:transparent;color:#9ab8ff">Esqueci minha senha</button>
+    <div class="login-note" id="authNote">Sua conta fica salva somente neste navegador. Isso não exige Google Cloud.</div>
+    <button id="closeLogin" style="margin-top:8px;background:transparent;color:#aeb1bb">Fechar</button>
+  </div>
+</div>
+
+<div class="overlay" id="plusOverlay"><div class="plus-modal">
+  <div class="plus-hero">
+    <div class="plus-icon">✦</div>
+    <div>
+      <div class="plus-kicker">NEXA PREMIUM</div>
+      <h2>Nexa Plus</h2>
+      <p>Leve sua Nexa para outro nível.</p>
+    </div>
+    <button class="plus-close" id="closePlus" aria-label="Fechar">×</button>
+  </div>
+
+  <div class="plus-status-row">
+    <span>Seu plano</span>
+    <span id="plusStatus" class="plus-badge">Plano gratuito</span>
+  </div>
+
+  <div class="plus-plans">
+    <div class="plus-plan free-plan">
+      <div class="plan-head"><div><div class="plan-name">Grátis</div><div class="plan-desc">Para começar</div></div><div class="plan-price">R$ 0</div></div>
+      <div class="plan-divider"></div>
+      <div class="feature muted-feature"><span>✓</span> Conversas com a Nexa</div>
+      <div class="feature muted-feature"><span>✓</span> Recursos básicos</div>
+      <div class="feature muted-feature"><span>✓</span> Histórico local</div>
+    </div>
+
+    <div class="plus-plan premium-plan">
+      <div class="popular-tag">MAIS RECURSOS</div>
+      <div class="plan-head"><div><div class="plan-name">Nexa Plus</div><div class="plan-desc">Para quem quer mais</div></div><div class="plan-price">R$ 19,90<small>/mês</small></div></div>
+      <div class="plan-divider"></div>
+      <div class="feature"><span>✓</span> Modelos mais avançados</div>
+      <div class="feature"><span>✓</span> Fotos, arquivos e PDFs</div>
+      <div class="feature"><span>✓</span> Áudio e gravação</div>
+      <div class="feature"><span>✓</span> Limites maiores</div>
+      <div class="feature"><span>✓</span> Recursos exclusivos</div>
+      <button class="plus-main-btn" id="plusMainAction">Assinar Nexa Plus</button>
+    </div>
+  </div>
+
+  <div class="coupon-box">
+    <div class="coupon-title">🎟️ Tem um cupom?</div>
+    <div class="coupon-line"><input id="couponInput" placeholder="Digite seu cupom"><button class="primary" id="applyCoupon">Aplicar</button></div>
+    <div class="coupon-help">O cupom do criador libera 100% de desconto.</div>
+  </div>
+  <div class="plus-footnote">A tela de assinatura é visual; pagamento online ainda não está conectado.</div>
+</div></div>
+<div class="overlay" id="creatorOverlay"><div class="modal">
+  <h2>⚡ Painel do Criador</h2>
+  <p class="view-sub" style="margin:0 0 18px">Você está usando a conta local do criador da Nexa.</p>
+  <div class="card"><h3>Arthur / Criador</h3><p>Plus: <strong>ATIVO</strong><br>Cupom de criador: 100% de desconto</p><span class="creator-badge">✓ CRIADOR</span></div>
+  <div class="field"><label>Código de acesso do criador</label><input id="creatorCodeInput" type="password" placeholder="Código do criador"></div>
+  <div class="modal-actions"><button id="closeCreator">Fechar</button><button class="primary" id="activateCreator">Ativar modo criador</button></div>
+</div></div>
+<input id="filePicker" type="file" multiple accept="image/*,audio/*,video/*,.pdf,.txt,.csv,.json,.md,.doc,.docx,.xls,.xlsx,.zip,.rar" style="display:none">
+<div class="toast" id="toast"></div>
+
+<script>
+/* =========================
+   NEXA AI — CONFIGURAÇÃO
+   =========================
+   Você pode colar a sua chave aqui, mas NÃO é seguro publicar uma chave
+   Gemini real dentro de um HTML público.
+*/
+const CONFIG = {
+  SERVER_API_URL: "",
+  GEMINI_API_KEY: "",
+  DEFAULT_MODEL: "gemini-3.5-flash-lite",
+  CREATOR_CODE: "NEXA-OWNER-2026",
+  CREATOR_COUPON: "NEXA100",
+  LOCAL_ADMIN_EMAIL: "admin@nexa.local",
+  LOCAL_ADMIN_PASSWORD: "Nexa@2026",
+  LOCAL_ADMIN_NAME: "Criador"
+};
+
+let firebaseApp=null, firebaseAuth=null, firestore=null;
+const state = {view:"home",messages:[],chats:[],notebooks:[],user:null,attachments:[],plus:false,creator:false};
+const $ = id => document.getElementById(id);
+const apiKey = () => localStorage.getItem("nexa_api_key") || CONFIG.GEMINI_API_KEY;
+const defaultModel = () => {
+  const m = localStorage.getItem("nexa_model");
+  return m || CONFIG.DEFAULT_MODEL;
+};
+const isCreator = () => localStorage.getItem("nexa_creator") === "1";
+const isPlus = () => isCreator() || localStorage.getItem("nexa_plus") === "1";
+function syncPlans(){ state.creator=isCreator(); state.plus=isPlus(); const b=$("creatorBtn"); if(b){b.style.display=state.creator?"inline-block":"none";b.textContent="⚡ Criador";} }
+function loginLocalAdmin(){
+  state.user={uid:"local-admin",name:CONFIG.LOCAL_ADMIN_NAME,email:CONFIG.LOCAL_ADMIN_EMAIL,local:true};
+  localStorage.setItem("nexa_local_admin","1");
+  localStorage.setItem("nexa_user",JSON.stringify(state.user));
+  localStorage.setItem("nexa_creator","1");
+  localStorage.setItem("nexa_plus","1");
+  syncPlans(); updateProfile(); render(); $("loginScreen").style.display="none";
+  toast("Login de Criador realizado. Plus liberado.");
+}
+function restoreLocalAdmin(){
+  if(localStorage.getItem("nexa_local_admin")==="1" && !state.user){
+    state.user={uid:"local-admin",name:CONFIG.LOCAL_ADMIN_NAME,email:CONFIG.LOCAL_ADMIN_EMAIL,local:true};
+    localStorage.setItem("nexa_creator","1");
+    localStorage.setItem("nexa_plus","1");
+  }
+}
+
+function firebaseConfig(){
+  try { return JSON.parse(localStorage.getItem("nexa_firebase_config")||"null"); }
+  catch(e){ return null; }
+}
+function firebaseReady(){ return !!(firebaseAuth && firestore); }
+function initFirebase(){
+  const cfg=firebaseConfig();
+  if(!cfg || !cfg.apiKey || !cfg.projectId) return false;
+  try{
+    if(!firebase.apps.length) firebaseApp=firebase.initializeApp(cfg); else firebaseApp=firebase.app();
+    firebaseAuth=firebase.auth(); firestore=firebase.firestore();
+    firebaseAuth.onAuthStateChanged(async user=>{
+      if(user){
+        const ref=firestore.collection("users").doc(user.uid);
+        const snap=await ref.get();
+        const data=snap.exists?snap.data():{};
+        state.user={uid:user.uid,name:data.name||user.displayName||"Usuário",email:user.email||""};
+        if(!snap.exists) await ref.set({name:state.user.name,email:state.user.email,publicId:publicUserId(user.uid),createdAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});
+        await loadUserData(); updateProfile(); render(); $("loginScreen").style.display="none";
+      }else{
+        state.user=null; state.chats=[]; state.notebooks=[]; state.messages=[]; window.currentChatId=null;
+        updateProfile(); render();
+      }
+    });
+    return true;
+  }catch(e){ console.error(e); return false; }
+}
+async function loadUserData(){
+  if(!firebaseReady()||!state.user)return;
+  try{
+    const snap=await firestore.collection("users").doc(state.user.uid).collection("chats").orderBy("updatedAt","desc").get();
+    state.chats=snap.docs.map(d=>({id:d.id,...d.data()}));
+    state.notebooks=[];
+  }catch(e){ state.chats=[]; toast("Não consegui carregar suas conversas do banco."); }
+}
+async function saveUserData(){
+  if(!firebaseReady()||!state.user)return;
+  const ref=firestore.collection("users").doc(state.user.uid).collection("chats");
+  await Promise.all(state.chats.map(c=>ref.doc(c.id).set({...c,updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true})));
+}
+function saveState(){ if(state.user) saveUserData().catch(console.error); }
+async function googleLogin(){
+  if(!firebaseReady()){toast("Configure o Firebase primeiro em Configurações.");openSettings();return;}
+  try{
+    const provider=new firebase.auth.GoogleAuthProvider();
+    provider.setCustomParameters({prompt:"select_account"});
+    await firebaseAuth.signInWithPopup(provider);
+  }catch(e){
+    if(e.code==="auth/popup-blocked") toast("O navegador bloqueou a janela do Google. Permita pop-ups para a Nexa AI.");
+    else if(e.code==="auth/popup-closed-by-user") toast("Login cancelado.");
+    else toast("Não consegui entrar com Google: "+(e.message||"erro"));
+  }
+}
+function publicUserId(uid){ return uid ? "NX-"+uid.slice(0,8).toUpperCase() : ""; }
+async function searchUserById(){
+  if(!firebaseReady()){toast("Configure o Firebase primeiro.");openSettings();return;}
+  const value=$("userIdSearch").value.trim().replace(/^NX-/i,"").toLowerCase();
+  if(value.length<8){$("userSearchResult").innerHTML='<div class="empty">Digite um ID Nexa válido.</div>';return;}
+  try{
+    const snap=await firestore.collection("users").where("publicId","==","NX-"+value.toUpperCase()).limit(1).get();
+    if(snap.empty){$("userSearchResult").innerHTML='<div class="empty">Nenhum usuário encontrado com esse ID.</div>';return;}
+    const d=snap.docs[0].data();
+    $("userSearchResult").innerHTML=`<div class="card"><h3>${escapeHtml(d.name||"Usuário")}</h3><p>ID: ${escapeHtml(d.publicId||"")}</p><button class="primary" style="padding:9px 13px;border-radius:10px;margin-top:8px" onclick="toast('Perfil encontrado. O chat entre amigos pode ser conectado aqui.')">Ver perfil</button></div>`;
+  }catch(e){$("userSearchResult").innerHTML='<div class="empty">Não foi possível pesquisar agora. Confira as regras do Firestore.</div>';}
+}
+
+function showAuth(create=false){
+  $("authTitle").textContent=create?"Criar conta na Nexa AI":"Entrar na Nexa AI";
+  $("authSubtitle").textContent=create?"Crie uma conta real para usar a Nexa em qualquer dispositivo.":"Entre com sua conta para acessar seu histórico na nuvem.";
+  $("authNameField").style.display=create?"block":"none";
+  $("authName").required=create;
+  $("authSubmit").textContent=create?"Criar conta":"Entrar";
+  $("authSwitch").textContent=create?"Já tenho uma conta":"Criar uma conta";
+  $("forgotPassword").style.display=create?"none":"block";
+  $("authNote").textContent="Você pode entrar com Google ou com Gmail/e-mail e senha. Seu histórico fica salvo na nuvem.";
+  $("loginScreen").style.display="flex"; window.authCreate=create;
+}
+async function submitAuth(){
+  const email=$("authEmail").value.trim().toLowerCase(), password=$("authPassword").value;
+  if(email===CONFIG.LOCAL_ADMIN_EMAIL && password===CONFIG.LOCAL_ADMIN_PASSWORD){ loginLocalAdmin(); return; }
+  if(!firebaseReady()){toast("Para contas normais, configure o Firebase. A conta de Criador já funciona localmente.");return;}
+  if(!email||!password){toast("Preencha e-mail e senha.");return}
+  if(password.length<6){toast("A senha precisa ter pelo menos 6 caracteres.");return}
+  try{
+    if(window.authCreate){
+      const name=$("authName").value.trim(); if(!name){toast("Digite seu nome.");return}
+      const cred=await firebaseAuth.createUserWithEmailAndPassword(email,password);
+      await cred.user.updateProfile({displayName:name});
+      await firestore.collection("users").doc(cred.user.uid).set({name,email,publicId:publicUserId(cred.user.uid),createdAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});
+      toast("Conta criada com sucesso.");
+    }else{
+      await firebaseAuth.signInWithEmailAndPassword(email,password); toast("Login realizado.");
+    }
+  }catch(e){
+    const map={"auth/email-already-in-use":"Esse e-mail já possui uma conta.","auth/invalid-email":"E-mail inválido.","auth/weak-password":"A senha precisa ter pelo menos 6 caracteres.","auth/user-not-found":"Conta não encontrada.","auth/wrong-password":"Senha incorreta.","auth/invalid-credential":"E-mail ou senha incorretos."};
+    toast(map[e.code]||("Erro no login: "+(e.message||"tente novamente")));
+  }
+}
+async function forgotPassword(){
+  if(!firebaseReady()){toast("Configure o Firebase primeiro.");return}
+  const email=$("authEmail").value.trim().toLowerCase(); if(!email){toast("Digite seu e-mail primeiro.");return}
+  try{await firebaseAuth.sendPasswordResetEmail(email);toast("E-mail de recuperação enviado.");}catch(e){toast("Não consegui enviar a recuperação: "+(e.message||"erro"));}
+}
+async function signInWithGoogle(){
+  if(!firebaseReady()){toast("Configure o Firebase primeiro em Configurações.");openSettings();return}
+  try{
+    const provider=new firebase.auth.GoogleAuthProvider();
+    provider.setCustomParameters({prompt:"select_account"});
+    await firebaseAuth.signInWithPopup(provider);
+    toast("Login com Google realizado.");
+  }catch(e){
+    const map={
+      "auth/popup-closed-by-user":"A janela do Google foi fechada.",
+      "auth/popup-blocked":"O navegador bloqueou a janela do Google. Permita pop-ups para este site.",
+      "auth/unauthorized-domain":"Este domínio ainda não foi autorizado no Firebase Authentication.",
+      "auth/account-exists-with-different-credential":"Já existe uma conta com outro método de login para este e-mail."
+    };
+    toast(map[e.code]||("Erro no Google: "+(e.message||"tente novamente")));
+  }
+}
+async function logout(){
+  try{if(firebaseAuth)await firebaseAuth.signOut();}catch(e){console.error(e)}
+  localStorage.removeItem("nexa_local_admin");
+  if(state.user && state.user.local){
+    state.user=null; state.messages=[]; state.chats=[]; state.notebooks=[]; window.currentChatId=null;
+    localStorage.removeItem("nexa_user");
+    localStorage.removeItem("nexa_creator");
+    localStorage.removeItem("nexa_plus");
+    syncPlans(); updateProfile(); render(); toast("Você saiu da conta de Criador.");
+  }
+}
+
+function openPlus(){
+  syncPlans();
+  $("plusStatus").textContent=isPlus()?"✦ Plus ativo":"Plano gratuito";
+  $("plusMainAction").textContent=isPlus()?"Plus já está ativo":"Assinar Nexa Plus";
+  $("plusOverlay").style.display="flex";
+}
+function openCreator(){ $("creatorOverlay").style.display="flex"; }
+function activateCreator(){
+  const code=$("creatorCodeInput").value.trim();
+  if(code!==CONFIG.CREATOR_CODE){toast("Código de criador inválido.");return;}
+  localStorage.setItem("nexa_creator","1"); localStorage.setItem("nexa_plus","1"); syncPlans(); updateProfile(); $("creatorOverlay").style.display="none"; toast("Modo Criador ativado. Nexa Plus liberado.");
+}
+function applyCoupon(){
+  const code=$("couponInput").value.trim().toUpperCase();
+  if(code===CONFIG.CREATOR_COUPON){localStorage.setItem("nexa_plus","1");syncPlans();$("plusStatus").textContent="✦ Plus ativo — 100% de desconto";toast("Cupom aplicado: 100% de desconto.");}
+  else toast("Cupom inválido.");
+}
+
+function toast(msg){
+  $("toast").textContent = msg; $("toast").style.display = "block";
+  clearTimeout(window._toast); window._toast = setTimeout(()=>$("toast").style.display="none",2600);
+}
+function saveState(){
+  if(state.user){
+    localStorage.setItem("nexa_user", JSON.stringify(state.user));
+    saveUserData();
+  }
+}
+function escapeHtml(s){
+  return s.replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]));
+}
+function md(s){
+  let x=escapeHtml(s);
+  x=x.replace(/```([\s\S]*?)```/g,'<pre style="background:#101116;padding:12px;border-radius:10px;overflow:auto">$1</pre>');
+  x=x.replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>');
+  x=x.replace(/`([^`]+)`/g,'<code style="background:#22242a;padding:2px 5px;border-radius:5px">$1</code>');
+  return x.replace(/\n/g,"<br>");
+}
+
+function renderRecents(){
+  const el=$("recents"); el.innerHTML="";
+  state.chats.slice().reverse().slice(0,12).forEach((c,i)=>{
+    const b=document.createElement("button"); b.className="recent"; b.textContent=c.title || "Nova conversa";
+    b.onclick=()=>openChat(c.id); el.appendChild(b);
+  });
+}
+
+function composer(show){
+  $("bottomComposer").classList.toggle("hidden",!show);
+}
+function render(){
+  renderRecents();
+  document.querySelectorAll(".nav button").forEach(b=>b.classList.toggle("active",b.dataset.view===state.view));
+  const c=$("content");
+  if(state.view==="home"){
+    composer(false);
+    c.innerHTML=`<div class="home">
+      <h1>Ative sempre que precisar</h1>
+      <div id="homeAttachments" class="attachments"></div>
+      <div class="composer">
+        <button class="circle-btn" id="homeAttach">＋</button><button class="circle-btn" id="homeMic" title="Gravar áudio">🎙</button>
+        <textarea id="homeInput" rows="1" placeholder="Pergunte à Nexa AI"></textarea>
+        <div class="model-wrap"><select class="model-select" id="homeModel"><option value="gemini-3.5-flash-lite">Turbo • Flash-Lite</option><option value="gemini-3.8-flash">Avançado • Flash</option></select></div>
+        <button class="circle-btn send" id="homeSend">➤</button>
+      </div>
+      <div class="hint">Nexa AI pode cometer erros. Confira informações importantes.</div>
+    </div>`;
+    $("homeModel").value=defaultModel();
+    $("homeSend").onclick=()=>startFrom($("homeInput").value,$("homeModel").value);
+    $("homeAttach").onclick=()=>$("filePicker").click();
+    $("homeMic").onclick=toggleAudioRecord;
+    $("homeInput").addEventListener("keydown",e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();$("homeSend").click()}});
+    $("homeInput").focus();
+  } else if(state.view==="chat"){
+    composer(true);
+    c.innerHTML=`<div class="chat" id="chat"></div>`;
+    drawMessages();
+    setupBottom();
+  } else if(state.view==="search"){
+    composer(false);
+    c.innerHTML=`<h2 class="view-title">Pesquisar conversas</h2><p class="view-sub">Encontre suas conversas salvas neste navegador.</p>
+    <div style="max-width:900px;margin:auto"><input id="searchBox" style="width:100%;padding:14px;border-radius:13px;border:1px solid #30323a;background:#17191f;color:#fff;outline:0" placeholder="Pesquisar por título ou conteúdo..."></div>
+    <div class="card-grid" id="searchResults" style="margin-top:18px"></div>`;
+    const search=()=>{const q=$("searchBox").value.toLowerCase();$("searchResults").innerHTML=state.chats.filter(x=>(x.title+" "+x.messages.map(m=>m.text).join(" ")).toLowerCase().includes(q)).map(x=>`<div class="card" onclick="openChat('${x.id}')" style="cursor:pointer"><h3>${escapeHtml(x.title)}</h3><p>${x.messages.length} mensagens</p></div>`).join("")||`<div class="empty">Nenhuma conversa encontrada.</div>`};
+    $("searchBox").oninput=search; search(); $("searchBox").focus();
+  } else if(state.view==="people"){
+    composer(false);
+    c.innerHTML=`<h2 class="view-title">Procurar usuário</h2><p class="view-sub">Encontre seus amigos pelo ID da Nexa AI.</p>
+      <div style="max-width:900px;margin:auto;display:flex;gap:9px">
+        <input id="userIdSearch" style="flex:1;padding:14px;border-radius:13px;border:1px solid #30323a;background:#17191f;color:#fff;outline:0" placeholder="Ex.: NX-A1B2C3D4">
+        <button id="userIdSearchBtn" class="primary" style="padding:0 18px;border-radius:13px;background:#5267d9">Procurar</button>
+      </div>
+      <div id="userSearchResult" style="max-width:900px;margin:18px auto"></div>`;
+    $("userIdSearchBtn").onclick=searchUserById;
+    $("userIdSearch").addEventListener("keydown",e=>{if(e.key==="Enter")searchUserById()});
+  } else if(state.view==="images"){
+    composer(false);
+    c.innerHTML=`<h2 class="view-title">Imagens</h2><p class="view-sub">Área preparada para recursos de imagem da Nexa AI.</p><div class="card-grid"><div class="card"><h3>Gerar imagem</h3><p>Digite uma descrição para adicionar um gerador de imagens quando você conectar um modelo de imagem.</p></div><div class="card"><h3>Analisar imagem</h3><p>Use o botão de anexar dentro do chat para preparar imagens para análise multimodal.</p></div></div>`;
+  } else if(state.view==="library"){
+    composer(false);
+    c.innerHTML=`<h2 class="view-title">Biblioteca</h2><p class="view-sub">Seus notebooks e arquivos locais.</p><div class="card-grid" id="libraryGrid"></div>`;
+    const g=$("libraryGrid");
+    if(!state.notebooks.length) g.innerHTML=`<div class="empty">Sua biblioteca está vazia.<br>Clique em “Novo notebook” para criar um.</div>`;
+    else state.notebooks.forEach((n,i)=>g.innerHTML+=`<div class="card"><h3>📓 ${escapeHtml(n.name)}</h3><p>${escapeHtml(n.text||"Notebook vazio")}</p></div>`);
+  }
+}
+
+function drawMessages(){
+  const el=$("chat"); if(!el)return;
+  if(!state.messages.length){el.innerHTML=`<div class="empty">Comece uma conversa com a Nexa AI.</div>`;return}
+  el.innerHTML=state.messages.map(m=>{
+    const att=(m.attachments||[]).map(a=>a.data&&a.kind==='image'?`<img class="file-preview" src="${a.data}" alt="${escapeHtml(a.name)}">`:`<div class="attachment-chip">${a.kind==='audio'?'🎙️':'📎'} ${escapeHtml(a.name)}</div>`).join("");
+    if(m.role==="user") return `<div class="message user"><div class="bubble">${att?`<div class="message-attachments">${att}</div>`:""}${m.text?`<div class="user-text">${md(m.text)}</div>`:""}</div></div>`;
+    return `<div class="message ai"><div class="msg-avatar" aria-label="Nexa AI">N</div><div class="bubble">${md(m.text||"")}</div></div>`;
+  }).join("");
+  el.scrollTop=el.scrollHeight;
+}
+
+function renderAttachments(targetId){
+  const el=$(targetId); if(!el)return;
+  el.innerHTML=state.attachments.map((a,i)=>`<div class="attachment-chip"><span>${a.kind==='image'?'🖼️':a.kind==='audio'?'🎙️':'📎'} ${escapeHtml(a.name)}</span><button onclick="removeAttachment(${i})">✕</button></div>`).join("");
+}
+function renderAllAttachments(){renderAttachments("homeAttachments");renderAttachments("bottomAttachments");}
+function removeAttachment(i){state.attachments.splice(i,1);renderAllAttachments();}
+async function addFiles(files){
+  for(const file of Array.from(files||[])){
+    if(file.size>15*1024*1024){toast(file.name+" é maior que 15 MB.");continue;}
+    const kind=file.type.startsWith("image/")?"image":file.type.startsWith("audio/")?"audio":"file";
+    if(kind==='file' && (file.type.startsWith('text/') || /\.(txt|csv|json|md)$/i.test(file.name))){
+      const text=await file.text();
+      state.attachments.push({name:file.name,type:file.type||'text/plain',kind,text:text.slice(0,50000)});
+    }else{
+      const data=await new Promise((resolve,reject)=>{const r=new FileReader();r.onload=()=>resolve(r.result);r.onerror=reject;r.readAsDataURL(file)});
+      state.attachments.push({name:file.name,type:file.type||'application/octet-stream',kind,data});
+    }
+  }
+  renderAllAttachments();
+}
+function setupFilePicker(){
+  $("filePicker").onchange=async e=>{await addFiles(e.target.files);e.target.value=""};
+}
+function setupBottom(){
+  $("chatInput").value=""; $("modelSelect").value=defaultModel(); renderAllAttachments();
+  $("chatInput").addEventListener("input",()=>{const t=$("chatInput");t.style.height="auto";t.style.height=Math.min(t.scrollHeight,170)+"px"});
+  $("chatInput").addEventListener("keydown",e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();$("sendBtn").click()}});
+  $("sendBtn").onclick=()=>sendMessage($("chatInput").value,$("modelSelect").value);
+  $("attachBtn").onclick=()=>$("filePicker").click();
+  $("micBtn").onclick=toggleAudioRecord;
+}
+function startFrom(text,model){
+  if(!text.trim() && !state.attachments.length)return;
+  state.messages=[{role:"user",text:text.trim(),attachments:state.attachments.map(x=>({...x}))}];
+  state.attachments=[]; state.view="chat"; render(); callGemini(model);
+}
+async function sendMessage(text,model){
+  if(!text.trim() && !state.attachments.length)return;
+  state.messages.push({role:"user",text:text.trim(),attachments:state.attachments.map(x=>({...x}))});
+  state.attachments=[]; render(); await callGemini(model);
+}
+
+async function recordAudio(){
+  if(!navigator.mediaDevices?.getUserMedia){toast("Seu navegador não permite gravação de áudio aqui.");return;}
+  try{
+    const stream=await navigator.mediaDevices.getUserMedia({audio:true});
+    const rec=new MediaRecorder(stream); const chunks=[];
+    rec.ondataavailable=e=>chunks.push(e.data);
+    rec.onstop=async()=>{stream.getTracks().forEach(t=>t.stop());const blob=new Blob(chunks,{type:rec.mimeType||'audio/webm'});const file=new File([blob],`audio-${Date.now()}.webm`,{type:blob.type});await addFiles([file]);toast("Áudio anexado.");};
+    rec.start(); toast("Gravando... clique no botão novamente para parar.");
+    window.activeRecorder=rec;
+  }catch(e){toast("Não consegui acessar seu microfone.");}
+}
+function toggleAudioRecord(){ if(window.activeRecorder?.state==='recording'){window.activeRecorder.stop();window.activeRecorder=null;}else recordAudio(); }
+
+async function callGemini(model){
+  const endpoint=(localStorage.getItem("nexa_server_api_url")||CONFIG.SERVER_API_URL||"/api/chat").trim()||"/api/chat";
+  const chatEl=$("chat");
+  if(chatEl){
+    chatEl.innerHTML+=`<div class="message ai" id="typing"><div class="msg-avatar">N</div><div class="bubble"><span class="typing"><i></i><i></i><i></i></span></div></div>`;
+    chatEl.scrollTop=chatEl.scrollHeight;
+  }
+
+  const contents=state.messages.map(m=>({
+    role:m.role==="user"?"user":"model",
+    parts:[
+      ...(m.text?[{text:m.text}]:[]),
+      ...((m.attachments||[]).flatMap(a=>{
+        if(a.data && (a.kind==='image'||a.kind==='audio')) return [{inline_data:{mime_type:a.type,data:a.data.split(',')[1]}}];
+        if(a.text) return [{text:`\n[Arquivo ${a.name}]\n${a.text}`}];
+        return [{text:`\n[Arquivo anexado: ${a.name} (${a.type||'tipo desconhecido'})]`}];
+      }))
+    ]
+  }));
+
+  const nexaPersonality=`
+Você é a Nexa AI. Sua personalidade é a de um adolescente brasileiro esperto e gente boa: casual, engraçado na medida certa, direto e natural.
+- Fale em português do Brasil quando o usuário falar em português.
+- Use gírias e linguagem informal com moderação (tipo “mano”, “kkk”, “prra”, “brabo”), sem forçar em toda frase.
+- Pode fazer piadas leves e reagir com energia, mas sem virar um personagem infantil.
+- Não diga que tem experiências pessoais reais; apenas converse de forma natural.
+- Para dúvidas técnicas, seja preciso mesmo mantendo a linguagem casual.
+
+Você manja bastante de Roblox, Free Fire e Minecraft: gameplay, modos, mecânicas, mapas, servidores, comandos, desempenho e criação de conteúdo.
+- Quando o usuário perguntar sobre mapas/experiências do Roblox que estão bombando, tendências do Free Fire/Minecraft ou assuntos que mudam com o tempo, não invente. Use pesquisa na web quando ela estiver disponível e considere a data atual.
+- Para “o que está bombando no TikTok”, trends, memes, sons, criadores, mapas ou novidades atuais, trate como informação temporal e pesquise antes de afirmar.
+- Diferencie claramente fatos atuais de opinião, rumor ou previsão.
+- Se a pesquisa não estiver disponível ou não encontrar dados confiáveis, diga isso em vez de inventar.
+
+Se o usuário mandar uma foto, analise o que aparece nela e responda sobre a imagem. Se mandar arquivo ou áudio e houver conteúdo legível/disponível, use esse conteúdo na resposta.
+Responda de forma útil e não fique repetindo instruções ou avisos desnecessários.`;
+
+  const requestBody={
+    model:model||defaultModel(),
+    systemInstruction:{parts:[{text:nexaPersonality}]},
+    contents
+  };
+
+  try{
+    const res=await fetch(endpoint,{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify(requestBody)
+    });
+
+    if(!res.ok){
+      let message=`Servidor da Nexa retornou HTTP ${res.status}`;
+      try{ const data=await res.json(); message=data?.error||message; }catch(_){ }
+      throw new Error(message);
+    }
+    if(!res.body||!res.body.getReader) throw new Error("Seu navegador não suporta streaming desta resposta.");
+
+    const reader=res.body.getReader();
+    const decoder=new TextDecoder();
+    let buffer="", answer="", received=false, lastPaint=0;
+
+    const consumeEvent=(event)=>{
+      const lines=event.split(/\r?\n/);
+      const payload=lines.filter(l=>l.startsWith("data:")).map(l=>l.slice(5).trim()).join("");
+      if(!payload||payload==="[DONE]")return;
+      try{
+        const data=JSON.parse(payload);
+        const parts=data?.candidates?.[0]?.content?.parts||[];
+        for(const part of parts){
+          if(typeof part?.text==="string"&&part.text){answer+=part.text;received=true;}
+        }
+      }catch(_){ }
+    };
+
+    const paint=()=>{
+      const typing=$("typing"); if(!typing)return;
+      const bubble=typing.querySelector('.bubble');
+      if(bubble) bubble.innerHTML=answer?md(answer)+`<span class="stream-cursor"></span>`:`<span class="typing"><i></i><i></i><i></i></span>`;
+      if(chatEl)chatEl.scrollTop=chatEl.scrollHeight;
+    };
+
+    while(true){
+      const {value,done}=await reader.read();
+      if(done)break;
+      buffer+=decoder.decode(value,{stream:true});
+      const events=buffer.split(/\r?\n\r?\n/);
+      buffer=events.pop()||"";
+      for(const event of events){
+        const before=answer.length;
+        consumeEvent(event);
+        if(answer.length>before){
+          const now=performance.now();
+          if(now-lastPaint>45){paint();lastPaint=now;}
+        }
+      }
+    }
+    if(buffer.trim())consumeEvent(buffer);
+
+    const typing=$("typing"); if(typing)typing.remove();
+    if(!received)throw new Error("O servidor não recebeu texto do Gemini.");
+    state.messages.push({role:"assistant",text:answer});
+    saveChat(); render();
+  }catch(err){
+    const typing=$("typing"); if(typing)typing.remove();
+    state.messages.push({role:"assistant",text:"Não consegui falar com a Nexa agora.\n\nErro: "+(err.message||"falha de rede")+"\n\nSe você publicou a Nexa, confira se o servidor está rodando e se a variável GEMINI_API_KEY foi configurada nele."});
+    render();
+  }
+}
+
+function saveChat(){
+  const first=state.messages.find(x=>x.role==="user");
+  const title=(first?.text||"Nova conversa").slice(0,48);
+  const existing=state.chats.find(x=>x.id===window.currentChatId);
+  if(existing){existing.messages=state.messages;existing.title=title}
+  else{
+    window.currentChatId=crypto.randomUUID();
+    state.chats.push({id:window.currentChatId,title,messages:state.messages});
+  }
+  saveState();
+}
+function openChat(id){
+  const c=state.chats.find(x=>x.id===id);if(!c)return;
+  window.currentChatId=id;state.messages=c.messages;state.view="chat";render();
+}
+function newChat(){window.currentChatId=null;state.messages=[];state.view="home";render()}
+
+function openSettings(){
+  $("apiKey").value=apiKey();
+  $("serverApiUrl").value=localStorage.getItem("nexa_server_api_url")||CONFIG.SERVER_API_URL||"/api/chat"; $("defaultModel").value=defaultModel();
+  $("settingsOverlay").style.display="flex";
+}
+function closeSettings(){$("settingsOverlay").style.display="none"}
+function updateProfile(){
+  if(!state.user){
+    $("profileName").textContent=isCreator()?"Arthur · Criador":"Visitante";
+    $("profileEmail").innerHTML=isCreator()?'<span class="creator-badge">✓ CRIADOR · PLUS</span>':"Entre ou crie uma conta";
+    $("avatar").textContent=isCreator()?"A":"N";
+    $("loginTop").textContent="Entrar / Criar conta";
+    syncPlans();
+    return;
+  }
+  $("profileName").textContent=state.user.name||"Usuário";
+  $("profileEmail").textContent=(state.user.email||"")+((state.user.uid)?" · "+publicUserId(state.user.uid):"");
+  $("avatar").textContent=(state.user.name||"U").charAt(0).toUpperCase();
+  $("loginTop").textContent="Sair da conta";
+  syncPlans();
+}
+
+document.querySelectorAll(".nav button").forEach(b=>b.onclick=()=>{state.view=b.dataset.view; if(state.view==="home")window.currentChatId=null;render()});
+$("settingsBtn").onclick=openSettings;
+$("closeSettings").onclick=closeSettings;
+$("saveSettings").onclick=()=>{
+  localStorage.setItem("nexa_api_key",$("apiKey").value.trim());
+  localStorage.setItem("nexa_server_api_url",$("serverApiUrl").value.trim());
+  localStorage.setItem("nexa_model",$("defaultModel").value);
+  closeSettings(); toast("Configurações salvas.");
+};
+$("loginTop").onclick=()=>{ if(state.user) logout(); else showAuth(false); };
+$("authSubmit").onclick=submitAuth;
+$("googleLoginBtn").onclick=googleLogin;
+$("forgotPassword").onclick=forgotPassword;
+$("authSwitch").onclick=()=>showAuth(!window.authCreate);
+$("closeLogin").onclick=()=>$("loginScreen").style.display="none";
+$("authPassword").addEventListener("keydown",e=>{if(e.key==="Enter")submitAuth()});
+$("authEmail").addEventListener("keydown",e=>{if(e.key==="Enter")$("authPassword").focus()});
+$("newNotebook").onclick=()=>{
+  const name=prompt("Nome do notebook:");
+  if(!name)return;
+  state.notebooks.push({name,text:""});saveState();state.view="library";render();toast("Notebook criado.");
+};
+$("upgradeBtn").onclick=openPlus;
+$("creatorBtn").onclick=openCreator;
+$("plusMainAction").onclick=()=>{ if(isPlus()){toast("Seu Nexa Plus já está ativo.");return;} $("couponInput").focus(); toast("Use um cupom ou conecte um sistema de pagamento para assinar."); };
+$("closePlus").onclick=()=>$("plusOverlay").style.display="none";
+$("applyCoupon").onclick=applyCoupon;
+$("closeCreator").onclick=()=>$("creatorOverlay").style.display="none";
+$("activateCreator").onclick=activateCreator;
+setupFilePicker();
+window.addEventListener("keydown",e=>{if(e.key==="Escape"){closeSettings();$("loginScreen").style.display="none"}});
+
+restoreLocalAdmin();
+syncPlans(); updateProfile(); render();
+// Firebase continua disponível para uma futura versão com contas reais.
+// A Nexa agora abre normalmente sem exigir configuração ou login.
+initFirebase();
+</script>
+</body>
+</html>
